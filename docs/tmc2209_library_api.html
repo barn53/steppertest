@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMC2209 Library API Reference</title>
+  <style>
+    :root {
+      --panel: #fffdf8;
+      --ink: #1f2933;
+      --muted: #5b6975;
+      --border: #d8cdb9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, #f9dfc4 0, transparent 28%),
+        radial-gradient(circle at left 20%, #d7ead0 0, transparent 22%),
+        linear-gradient(180deg, #f8f4ec 0%, #f1ecdf 100%);
+    }
+
+    main {
+      max-width: none;
+      margin: 0;
+      padding: 32px 20px 56px;
+    }
+
+    h1, h2 {
+      margin: 0 0 12px;
+      line-height: 1.15;
+    }
+
+    h1 {
+      font-size: 2.35rem;
+      color: #3f2d19;
+    }
+
+    h2 {
+      margin-top: 36px;
+      font-size: 1.5rem;
+      color: #51381d;
+    }
+
+    p, li {
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+
+    .lead {
+      max-width: 1100px;
+      font-size: 1.06rem;
+      color: #403224;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(76, 57, 31, 0.08);
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    th {
+      background: #efe5d3;
+      color: #3f2d19;
+      position: sticky;
+      top: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+      background: #f2ede4;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    .fn-main {
+      font-weight: 700;
+      color: #2f2214;
+    }
+
+    .fn-meta {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    ul {
+      margin: 10px 0 0 20px;
+      padding: 0;
+    }
+
+    .note {
+      color: var(--muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>TMC2209 Library API Reference</h1>
+    <p class="lead">
+      This page describes the public, user-facing API of the local <code>janelia-arduino/TMC2209</code> library used in this
+      project. Each row explains what the function does, which chip registers it reads or writes, what defaults
+      or side effects are involved, and what dependencies or caveats matter in real use. Technical phrases like
+      <em>current scaling</em>, <em>StealthChop</em>, <em>SpreadCycle</em>, and <em>CoolStep</em> are translated into simpler language
+      in the explanations and glossary below.
+    </p>
+
+    <section class="card">
+      <h2>Setup And Basic Control</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Function</th>
+              <th>Function Parameters</th>
+              <th>Chip Registers Touched / Read</th>
+              <th>Explanation</th>
+              <th>Dependencies / Considerations</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="fn-main"><code>setup(...)</code></span>
+                <span class="fn-meta">Overloads for <code>HardwareSerial</code>, platform-specific UART types, and <code>SoftwareSerial</code></span>
+              </td>
+              <td>
+                <code>serial</code><br>
+                <code>serial_baud_rate = 115200</code> for hardware UARTs<br>
+                <code>serial_baud_rate = 9600</code> for <code>SoftwareSerial</code><br>
+                <code>serial_address = SERIAL_ADDRESS_0</code><br>
+                ESP32 / RP2040 overloads also allow <code>alternate_rx_pin</code>, <code>alternate_tx_pin</code>
+              </td>
+              <td>
+                Writes: <code>GCONF</code>, <code>IHOLD_IRUN</code>, <code>CHOPCONF</code>, <code>PWMCONF</code>, <code>COOLCONF</code>,
+                <code>GSTAT</code>, <code>TPOWERDOWN</code>, <code>TPWMTHRS</code>, <code>VACTUAL</code>, <code>TCOOLTHRS</code>, <code>SGTHRS</code><br>
+                Effective post-setup defaults include:
+                <code>GCONF.pdn_disable=True</code>,
+                <code>GCONF.mstep_reg_select=True</code>,
+                <code>GCONF.multistep_filt=True</code>,
+                <code>CHOPCONF.MRES=256</code>,
+                <code>IHOLD_IRUN.IRUN=0</code>,
+                <code>IHOLD_IRUN.IHOLD=0</code>,
+                <code>IHOLD_IRUN.IHOLDDELAY=1</code>,
+                <code>CHOPCONF.toff=0</code>,
+                <code>PWMCONF.pwm_autoscale=False</code>,
+                <code>PWMCONF.pwm_autograd=False</code>
+              </td>
+              <td>
+                Starts the serial connection to the driver and runs the library's initialization sequence.
+                it switches the chip into UART-controlled mode, writes the library's preferred starting configuration,
+                clears any old drive-error latch, reduces motor current to the minimum, and leaves the driver software-disabled.
+              </td>
+              <td>
+                This is the most important call; most other functions assume it has already succeeded. On ESP32, the local patched
+                copy intentionally avoids calling <code>Serial.end()</code> before <code>begin()</code> in the generic path because
+                that caused the first <code>GCONF</code> write to fail on ESP32-C3. For UART control to work fully, the wiring,
+                board routing, and UART address must also be correct.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setHardwareEnablePin()</code></span></td>
+              <td><code>hardware_enable_pin</code></td>
+              <td>No chip register write. MCU GPIO only.</td>
+              <td>
+                Tells the library which microcontroller pin is connected to the driver's hardware <code>EN</code> input.
+                The function immediately configures that MCU pin as an output and drives it HIGH, which means
+                the driver starts out hardware-disabled.
+              </td>
+              <td>
+                This does not replace <code>enable()</code> or <code>disable()</code>; it adds hardware-level control on top of the
+                chip's software enable state. If you use this, remember that a HIGH level on <code>EN</code> still disables the power stage.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enable()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>CHOPCONF.toff</code> via <code>CHOPCONF</code>; may also drive the MCU hardware enable pin LOW</td>
+              <td>
+                Turns the power stage on in normal library use. The driver can actively energize the motor coils again.
+              </td>
+              <td>
+                If a hardware enable pin was configured, this function also pulls it LOW. It does not change motor current settings;
+                it only restores the saved chopper off-time. If <code>hardwareDisabled()</code> stays True, the chip is still blocked externally.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>disable()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>CHOPCONF.toff = 0</code> via <code>CHOPCONF</code>; may also drive the MCU hardware enable pin HIGH</td>
+              <td>
+                Turns the power stage off in software. The driver stops actively driving the motor coils.
+              </td>
+              <td>
+                This is the library's default state after <code>setup()</code>. If you need the motor to hold or move, you usually need
+                <code>enable()</code> afterward.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Motion And Current Configuration</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Function</th>
+              <th>Function Parameters</th>
+              <th>Chip Registers Touched / Read</th>
+              <th>Explanation</th>
+              <th>Dependencies / Considerations</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="fn-main"><code>setMicrostepsPerStep()</code></span></td>
+              <td><code>microsteps_per_step</code><br>Valid values are powers of two from <code>1</code> to <code>256</code>; other values are rounded down</td>
+              <td>Writes <code>CHOPCONF.MRES</code> via <code>CHOPCONF</code></td>
+              <td>
+                Sets how many tiny electrical sub-steps the driver divides one full motor step into.
+                Higher microstep values make motion smoother and quieter, but they also require a higher step rate from the controller.
+              </td>
+              <td>
+                This only controls the chip if <code>GCONF.mstep_reg_select=True</code>, which <code>setup()</code> normally sets.
+                If that bit is False, the physical <code>MS1/MS2</code> pins still decide the microstep value instead.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setMicrostepsPerStepPowerOfTwo()</code></span></td>
+              <td><code>exponent</code><br><code>0..8</code>, where <code>0=1</code>, <code>1=2</code>, ..., <code>8=256</code></td>
+              <td>Writes <code>CHOPCONF.MRES</code> via <code>CHOPCONF</code></td>
+              <td>
+                Same goal as <code>setMicrostepsPerStep()</code>, but it uses the power-of-two exponent directly instead of the human-readable microstep count.
+              </td>
+              <td>
+                Useful when you already think in <code>2^n</code> form. The same <code>mstep_reg_select</code> dependency applies here too.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setRunCurrent()</code></span></td>
+              <td><code>percent</code><br><code>0..100</code></td>
+              <td>Writes <code>IHOLD_IRUN.IRUN</code> via <code>IHOLD_IRUN</code>; may also update <code>COOLCONF.seimin</code> if CoolStep is enabled</td>
+              <td>
+                Sets the motor's running current. This changes how hard the driver pushes current into the motor while it is moving,
+                which strongly affects available torque, heat, and power draw.
+              </td>
+              <td>
+                The library maps percent to the chip's <code>0..31</code> current scale. The current-related values returned by
+                <code>getSettings()</code> come from the library's cached copy, not a fresh read of <code>IHOLD_IRUN</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setHoldCurrent()</code></span></td>
+              <td><code>percent</code><br><code>0..100</code></td>
+              <td>Writes <code>IHOLD_IRUN.IHOLD</code> via <code>IHOLD_IRUN</code></td>
+              <td>
+                Sets the standstill current. This controls how strongly the motor holds position while not moving.
+              </td>
+              <td>
+                Higher hold current gives stronger holding torque but creates more heat at standstill.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setHoldDelay()</code></span></td>
+              <td><code>percent</code><br><code>0..100</code></td>
+              <td>Writes <code>IHOLD_IRUN.IHOLDDELAY</code> via <code>IHOLD_IRUN</code></td>
+              <td>
+                Sets how gradually the chip drops from run current to hold current after motion stops.
+                It softens the transition so the driver does not immediately jump to the lower hold current.
+              </td>
+              <td>
+                This does not directly change torque by itself; it changes the delay and ramp-down behavior between moving and standing still.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setAllCurrentValues()</code></span></td>
+              <td>
+                <code>run_current_percent</code><br>
+                <code>hold_current_percent</code><br>
+                <code>hold_delay_percent</code><br>
+                All <code>0..100</code>
+              </td>
+              <td>Writes <code>IHOLD_IRUN</code> once</td>
+              <td>
+                Convenience call that sets run current, hold current, and hold delay in one write.
+              </td>
+              <td>
+                This is the cleanest way to update all three current-related settings together when you want them to stay consistent.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setRMSCurrent()</code></span></td>
+              <td><code>mA</code>, <code>rSense</code>, <code>holdMultiplier = 0.5</code></td>
+              <td>Writes <code>CHOPCONF.vsense</code> via <code>CHOPCONF</code>, then writes <code>IHOLD_IRUN.IRUN</code> and <code>IHOLD_IRUN.IHOLD</code></td>
+              <td>
+                Sets current from a target RMS current in milliamps instead of a simple percent. It also automatically chooses the
+                high-sensitivity current measurement mode when needed.
+              </td>
+              <td>
+                <code>rSense</code> must match the board's real sense resistor value if you want the current calculation to be meaningful.
+                This function may call the chip's <code>vsense</code> mode on or off automatically.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enableDoubleEdge()</code> / <code>disableDoubleEdge()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>CHOPCONF.dedge</code> via <code>CHOPCONF</code></td>
+              <td>
+                Controls whether the STEP interface reacts to both edges of the step pulse instead of just one.
+              </td>
+              <td>
+                Use this only if your motion-controller timing actually expects double-edge stepping. Otherwise, leave it off.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enableVSense()</code> / <code>disableVSense()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>CHOPCONF.vsense</code> via <code>CHOPCONF</code></td>
+              <td>
+                Switches the chip between normal and high-sensitivity current measurement range.
+                it changes how the driver measures coil current internally.
+              </td>
+              <td>
+                Most users do not need to toggle this directly because <code>setRMSCurrent()</code> already chooses it automatically when useful.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enableInverseMotorDirection()</code> / <code>disableInverseMotorDirection()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>GCONF.shaft</code> via <code>GCONF</code></td>
+              <td>
+                Reverses the logical motor direction in software.
+                It flips &quot;forward&quot; and &quot;backward&quot; without rewiring the motor.
+              </td>
+              <td>
+                This changes the driver's interpretation of direction. It does not change any wiring or motor current settings.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setStandstillMode()</code></span></td>
+              <td><code>mode</code>: <code>NORMAL</code>, <code>FREEWHEELING</code>, <code>STRONG_BRAKING</code>, <code>BRAKING</code></td>
+              <td>Writes <code>PWMCONF.freewheel</code> via <code>PWMCONF</code></td>
+              <td>
+                Chooses what the driver should do electrically when the motor is standing still:
+                hold normally, coast freely, or actively brake.
+              </td>
+              <td>
+                This strongly affects how the motor behaves at zero speed. <code>FREEWHEELING</code> usually removes holding force,
+                while braking modes can stop the shaft from coasting.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enableAutomaticCurrentScaling()</code> / <code>disableAutomaticCurrentScaling()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>PWMCONF.pwm_autoscale</code> via <code>PWMCONF</code></td>
+              <td>
+                Controls StealthChop's automatic amplitude adjustment. It decides whether the chip should
+                tune its own PWM drive strength automatically instead of relying only on fixed manual values.
+              </td>
+              <td>
+                The local library's <code>setup()</code> leaves this disabled. This matters mainly when you are using StealthChop.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enableAutomaticGradientAdaptation()</code> / <code>disableAutomaticGradientAdaptation()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>PWMCONF.pwm_autograd</code> via <code>PWMCONF</code></td>
+              <td>
+                Controls StealthChop's automatic gradient tuning. It lets the chip auto-tune how aggressively
+                the PWM drive changes with speed and load.
+              </td>
+              <td>
+                Like autoscale, this is mainly relevant in StealthChop mode. The local library's <code>setup()</code> leaves it disabled.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setPwmOffset()</code></span></td>
+              <td><code>pwm_amplitude</code><br><code>0..255</code></td>
+              <td>Writes <code>PWMCONF.pwm_offset</code> via <code>PWMCONF</code></td>
+              <td>
+                Sets the base PWM amplitude used by StealthChop. This is part of the low-level quiet-motion tuning.
+              </td>
+              <td>
+                Most users can leave this alone unless they are deliberately tuning StealthChop behavior.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setPwmGradient()</code></span></td>
+              <td><code>pwm_amplitude</code><br><code>0..255</code></td>
+              <td>Writes <code>PWMCONF.pwm_grad</code> via <code>PWMCONF</code></td>
+              <td>
+                Sets the PWM gradient term used by StealthChop. It changes how quickly the PWM behavior ramps with operating conditions.
+              </td>
+              <td>
+                Another advanced tuning knob. The local library's <code>setup()</code> leaves the effective value at <code>0</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setPowerDownDelay()</code></span></td>
+              <td><code>power_down_delay</code><br>Library default written during <code>setup()</code>: <code>20</code></td>
+              <td>Writes <code>TPOWERDOWN</code></td>
+              <td>
+                Sets how long the chip waits before entering its power-down behavior after standstill.
+              </td>
+              <td>
+                This is mostly useful when balancing quick wake-up against power-saving behavior at idle.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setReplyDelay()</code></span></td>
+              <td><code>delay</code><br>Clamped to <code>0..15</code> (<code>REPLY_DELAY_MAX</code>)</td>
+              <td>Writes <code>REPLYDELAY.replydelay</code> via <code>REPLYDELAY</code></td>
+              <td>
+                Sets the chip's UART reply delay. This adds a short wait before the driver answers a read request.
+              </td>
+              <td>
+                This can help in multi-driver or timing-sensitive UART setups. The header notes that values of at least <code>2</code>
+                are useful when using multiple serial addresses with bidirectional communication.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Motion Modes, Thresholds, And Load Features</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Function</th>
+              <th>Function Parameters</th>
+              <th>Chip Registers Touched / Read</th>
+              <th>Explanation</th>
+              <th>Dependencies / Considerations</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="fn-main"><code>moveAtVelocity()</code></span></td>
+              <td><code>microsteps_per_period</code></td>
+              <td>Writes <code>VACTUAL</code></td>
+              <td>
+                Commands the chip's internal velocity mode. You tell the driver &quot;spin this fast&quot; instead of supplying external STEP pulses.
+              </td>
+              <td>
+                This is different from classic STEP/DIR control. The sign sets direction; the magnitude sets speed.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>moveUsingStepDirInterface()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>VACTUAL = 0</code></td>
+              <td>
+                Returns control to the usual external STEP/DIR interface.
+              </td>
+              <td>
+                Use this after <code>moveAtVelocity()</code> if you want the external step pin to drive motion again.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enableStealthChop()</code> / <code>disableStealthChop()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>GCONF.enable_spread_cycle</code> via <code>GCONF</code></td>
+              <td>
+                Selects the driver's main current-control style.
+                <code>enableStealthChop()</code> chooses the quieter PWM-based mode.
+                <code>disableStealthChop()</code> switches to SpreadCycle, which is usually the more forceful and dynamic mode.
+              </td>
+              <td>
+                StealthChop is usually chosen for quiet motion; SpreadCycle is often preferred when torque, high-speed behavior, or dynamic response matter more than silence.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setStealthChopDurationThreshold()</code></span></td>
+              <td><code>duration_threshold</code></td>
+              <td>Writes <code>TPWMTHRS</code></td>
+              <td>
+                Sets the threshold that influences when StealthChop should be active.
+              </td>
+              <td>
+                This only matters if you are using StealthChop. The local library's <code>setup()</code> leaves the threshold at <code>0</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setStallGuardThreshold()</code></span></td>
+              <td><code>stall_guard_threshold</code></td>
+              <td>Writes <code>SGTHRS</code></td>
+              <td>
+                Sets the stall-detection sensitivity. This adjusts how easily the driver decides the motor is heavily loaded or stalling.
+              </td>
+              <td>
+                This setting becomes useful only if you actively use StallGuard-related feedback such as <code>getStallGuardResult()</code> or CoolStep.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enableCoolStep()</code> / <code>disableCoolStep()</code></span></td>
+              <td>
+                Enable: <code>lower_threshold = 1</code>, <code>upper_threshold = 0</code><br>
+                Disable: no parameters
+              </td>
+              <td>Writes <code>COOLCONF.semin</code> and <code>COOLCONF.semax</code> via <code>COOLCONF</code>; also updates library state <code>cool_step_enabled_</code></td>
+              <td>
+                Turns CoolStep on or off. CoolStep means the chip automatically lowers current when the motor load is light and raises it when load increases.
+                It is an automatic &quot;use only as much current as needed&quot; feature.
+              </td>
+              <td>
+                The library stores a separate boolean for this feature and reports it in <code>getSettings()</code>.
+                In practical use, CoolStep is usually configured together with StallGuard-related thresholds such as <code>SGTHRS</code> and <code>TCOOLTHRS</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setCoolStepCurrentIncrement()</code></span></td>
+              <td><code>current_increment</code>: <code>CURRENT_INCREMENT_1</code>, <code>_2</code>, <code>_4</code>, <code>_8</code></td>
+              <td>Writes <code>COOLCONF.seup</code> via <code>COOLCONF</code></td>
+              <td>
+                Sets how quickly CoolStep is allowed to raise current when more torque is needed.
+              </td>
+              <td>
+                This matters only if CoolStep is in use. Larger increments react faster but can be less gentle.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setCoolStepMeasurementCount()</code></span></td>
+              <td><code>measurement_count</code>: <code>MEASUREMENT_COUNT_32</code>, <code>_8</code>, <code>_2</code>, <code>_1</code></td>
+              <td>Writes <code>COOLCONF.sedn</code> via <code>COOLCONF</code></td>
+              <td>
+                Sets how many load measurements CoolStep considers before reducing current.
+              </td>
+              <td>
+                Smaller measurement counts react more quickly; larger ones react more conservatively.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>setCoolStepDurationThreshold()</code></span></td>
+              <td><code>duration_threshold</code></td>
+              <td>Writes <code>TCOOLTHRS</code></td>
+              <td>
+                Sets the duration threshold associated with CoolStep and load-based regulation.
+              </td>
+              <td>
+                This is usually part of the same tuning bundle as CoolStep and StallGuard, not an isolated one-off setting.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>enableAnalogCurrentScaling()</code> / <code>disableAnalogCurrentScaling()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>GCONF.i_scale_analog</code> via <code>GCONF</code></td>
+              <td>
+                Chooses whether motor current is mainly scaled from the analog <code>VREF</code> input or from digital register values.
+                This decides whether a voltage on the board controls current scaling or the UART register settings do.
+              </td>
+              <td>
+                The local library's <code>setup()</code> leaves this disabled, which means digital register control is used.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>useExternalSenseResistors()</code> / <code>useInternalSenseResistors()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>GCONF.internal_rsense</code> via <code>GCONF</code></td>
+              <td>
+                Chooses whether the chip should use the board's external current-sense resistors or its internal sensing path.
+                This changes how the driver measures motor current.
+              </td>
+              <td>
+                This depends heavily on the actual board design. Most StepStick-style modules are built around external sense resistors,
+                so do not switch this casually without understanding the hardware.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Status, Readback, And Diagnostics</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Function</th>
+              <th>Function Parameters</th>
+              <th>Chip Registers Touched / Read</th>
+              <th>Explanation</th>
+              <th>Dependencies / Considerations</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="fn-main"><code>getVersion()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>IOIN.version</code> via <code>IOIN</code></td>
+              <td>
+                Returns the chip's version byte. The library expects <code>0x21</code> for a TMC2209.
+              </td>
+              <td>
+                This is the low-level read used by <code>isCommunicating()</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>isCommunicating()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>IOIN.version</code> via <code>getVersion()</code></td>
+              <td>
+                Checks whether UART communication is working at all.
+              </td>
+              <td>
+                If this returns False, do not trust other UART-based results yet. Power, address, wiring, and serial configuration are the first things to check.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>isSetupAndCommunicating()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>GCONF.pdn_disable</code> via <code>GCONF</code></td>
+              <td>
+                Library health check that mainly answers: &quot;Is the chip in the expected UART setup mode?&quot;
+              </td>
+              <td>
+                Important nuance: despite the name, this function does not separately verify the version byte first; it mainly checks whether <code>pdn_disable</code> reads back as True.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>isCommunicatingButNotSetup()</code></span></td>
+              <td>No parameters</td>
+              <td>Indirectly uses <code>IOIN.version</code> and <code>GCONF.pdn_disable</code></td>
+              <td>
+                Reports the mixed state where UART communication works, but the chip is not in the library's expected setup mode.
+              </td>
+              <td>
+                This can happen if the driver reset after setup or if setup bits like <code>pdn_disable</code> did not stick.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>hardwareDisabled()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>IOIN.enn</code> via <code>IOIN</code></td>
+              <td>
+                Checks the hardware enable input state.
+                It answers whether the chip is being held disabled by the physical <code>EN</code> pin.
+              </td>
+              <td>
+                This is separate from the software-enabled state controlled by <code>enable()</code> / <code>disable()</code>.
+                You can have working UART and still be hardware-disabled.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getMicrostepsPerStep()</code></span></td>
+              <td>No parameters</td>
+              <td>Uses cached <code>CHOPCONF.MRES</code> already stored in the library</td>
+              <td>
+                Returns the human-readable microstep value, such as <code>16</code> or <code>256</code>.
+              </td>
+              <td>
+                This method does not perform a fresh register read by itself. It interprets the library's cached <code>chopper_config_</code>,
+                so <code>getSettings()</code> is the safer &quot;freshen then summarize&quot; API.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getSettings()</code></span></td>
+              <td>No parameters</td>
+              <td>
+                Reads <code>GCONF</code>, <code>CHOPCONF</code>, <code>PWMCONF</code><br>
+                Also uses cached library values for <code>IHOLD_IRUN</code> and <code>cool_step_enabled_</code>
+              </td>
+              <td>
+                Returns a high-level summary struct with the settings most applications care about, such as communication state,
+                software enable state, microsteps, direction inversion, current values, PWM tuning, CoolStep state, and sense mode.
+              </td>
+              <td>
+                The current-related fields are not freshly read from <code>IHOLD_IRUN</code>; they come from the library's cached copy.
+                That is important if some other code or another MCU changes the chip behind the library's back.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getStatus()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>DRV_STATUS</code></td>
+              <td>
+                Returns the detailed driver-status struct, including overtemperature flags, short/open-load flags,
+                current scaling, StealthChop mode, and standstill state.
+              </td>
+              <td>
+                Good for fault diagnosis and deeper tuning. The <code>current_scaling</code> field means the chip's instantaneous internal current-scale value,
+                not just your commanded IRUN setting.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getGlobalStatus()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>GSTAT</code></td>
+              <td>
+                Returns the global status latch with flags like <code>reset</code>, <code>drv_err</code>, and <code>uv_cp</code>.
+              </td>
+              <td>
+                These bits are useful when debugging resets, driver faults, or undervoltage-related events.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>clearReset()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>GSTAT.reset = 1</code> via <code>GSTAT</code></td>
+              <td>
+                Clears the latched reset flag.
+              </td>
+              <td>
+                The reset bit is sticky, so once it is set it can keep reading True until you clear it explicitly.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>clearDriveError()</code></span></td>
+              <td>No parameters</td>
+              <td>Writes <code>GSTAT.drv_err = 1</code> via <code>GSTAT</code></td>
+              <td>
+                Clears the latched drive-error flag.
+              </td>
+              <td>
+                The local <code>setup()</code> already does this once during initialization.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getInterfaceTransmissionCounter()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>IFCNT</code></td>
+              <td>
+                Returns the chip's UART write-counter value.
+              </td>
+              <td>
+                This is excellent for debugging because it increases when valid UART write frames are accepted.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getInterstepDuration()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>TSTEP</code></td>
+              <td>
+                Returns the measured time between incoming STEP pulses.
+              </td>
+              <td>
+                This is useful only when the STEP/DIR interface is actually being driven.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getStallGuardResult()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>SG_RESULT</code></td>
+              <td>
+                Returns the chip's load-measurement result used by StallGuard.
+              </td>
+              <td>
+                Higher-level meaning depends on your motor, speed, and StallGuard configuration; it is a raw measurement, not a simple yes/no stall answer.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getPwmScaleSum()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>PWM_SCALE.pwm_scale_sum</code> via <code>PWM_SCALE</code></td>
+              <td>
+                Returns one of the chip's internal PWM scaling readbacks used in StealthChop.
+              </td>
+              <td>
+                Mostly useful for advanced tuning or diagnostics, not for ordinary motor control logic.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getPwmScaleAuto()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>PWM_SCALE.pwm_scale_auto</code> via <code>PWM_SCALE</code></td>
+              <td>
+                Returns the automatic PWM scale value currently chosen by the chip.
+              </td>
+              <td>
+                This is mainly meaningful when automatic StealthChop features are in use.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getPwmOffsetAuto()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>PWM_AUTO.pwm_offset_auto</code> via <code>PWM_AUTO</code></td>
+              <td>
+                Returns the automatically determined PWM offset value.
+              </td>
+              <td>
+                Advanced diagnostic readback; most users can ignore it unless tuning StealthChop deeply.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getPwmGradientAuto()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>PWM_AUTO.pwm_gradient_auto</code> via <code>PWM_AUTO</code></td>
+              <td>
+                Returns the automatically determined PWM gradient value.
+              </td>
+              <td>
+                Advanced diagnostic readback paired with <code>getPwmOffsetAuto()</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fn-main"><code>getMicrostepCounter()</code></span></td>
+              <td>No parameters</td>
+              <td>Reads <code>MSCNT</code></td>
+              <td>
+                Returns the chip's internal microstep position counter.
+              </td>
+              <td>
+                Useful for low-level diagnostics or synchronization, especially when you want to know where the driver currently is within the microstep cycle.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Note: functions like <code>getSettings()</code> and <code>getMicrostepsPerStep()</code> mix direct register reads with cached library state.
+        That is accurate for how this library works, but it is different from a &quot;read every register fresh every time&quot; design.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Plain-English Glossary</h2>
+      <ul>
+        <li><strong>Current scaling:</strong> The chip's way of deciding how much motor current to push into the coils. This is the &quot;how strong / how hot / how much torque&quot; setting.</li>
+        <li><strong>StealthChop:</strong> Trinamic's very quiet drive mode. It is usually chosen when low noise matters more than maximum dynamic response.</li>
+        <li><strong>SpreadCycle:</strong> Trinamic's more forceful current-control mode. It is often better when speed changes, load response, or torque matter more than silence.</li>
+        <li><strong>Chopper:</strong> The internal current-control engine that rapidly switches the output transistors on and off so the winding current stays near the target value.</li>
+        <li><strong>PWM offset:</strong> A base drive level used by StealthChop. Think of it as one part of the quiet-motion tuning baseline.</li>
+        <li><strong>PWM gradient:</strong> A slope value that changes how the PWM behavior ramps with speed and load.</li>
+        <li><strong>Autoscale:</strong> The chip automatically adjusts PWM drive strength for you instead of relying only on fixed manual values.</li>
+        <li><strong>Autograd:</strong> The chip automatically adjusts the PWM gradient for you.</li>
+        <li><strong>CoolStep:</strong> Automatic load-based current saving. The driver uses less current when full force is not needed and raises it again when load increases.</li>
+        <li><strong>StallGuard:</strong> A load-measurement feature used to estimate how hard the motor is working and whether it may be nearing a stall.</li>
+        <li><strong>Sense resistor / Rsense:</strong> The resistor path used to measure motor current. Some boards use external resistors; the chip can also use an internal sense path in some hardware designs.</li>
+        <li><strong>VSense:</strong> A setting that changes the current-measurement sensitivity range used by the driver.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

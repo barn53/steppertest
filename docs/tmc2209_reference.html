@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMC2209 Settings Reference</title>
+  <style>
+    :root {
+      --panel: #fffdf8;
+      --ink: #1f2933;
+      --muted: #5b6975;
+      --border: #d8cdb9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, #f9dfc4 0, transparent 28%),
+        radial-gradient(circle at left 20%, #d7ead0 0, transparent 22%),
+        linear-gradient(180deg, #f8f4ec 0%, #f1ecdf 100%);
+    }
+
+    main {
+      max-width: none;
+      margin: 0;
+      padding: 32px 20px 56px;
+    }
+
+    h1, h2 {
+      margin: 0 0 12px;
+      line-height: 1.15;
+    }
+
+    h1 {
+      font-size: 2.35rem;
+      color: #3f2d19;
+    }
+
+    h2 {
+      margin-top: 36px;
+      font-size: 1.5rem;
+      color: #51381d;
+    }
+
+    p, li {
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+
+    .lead {
+      max-width: 960px;
+      font-size: 1.06rem;
+      color: #403224;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(76, 57, 31, 0.08);
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    th {
+      background: #efe5d3;
+      color: #3f2d19;
+      position: sticky;
+      top: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+      background: #f2ede4;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    .param-main {
+      font-weight: 700;
+      color: #2f2214;
+    }
+
+    .param-meta {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    ul {
+      margin: 10px 0 0 20px;
+      padding: 0;
+    }
+
+    .note {
+      color: var(--muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>TMC2209 Library And Register Reference</h1>
+    <p class="lead">
+      This page gives a compact overview of the most relevant TMC2209 flags and settings exposed by the
+      <code>janelia-arduino/TMC2209</code> library. The most useful items are sorted to the top. Each parameter cell
+      tells you whether it is a chip field or a library-derived value, where it lives in the chip or the library,
+      and which public library functions are relevant to it. Unless noted otherwise, the defaults below describe the
+      effective library state after a successful <code>setup()</code> on a responding driver, not the raw chip reset defaults.
+    </p>
+
+    <section class="card">
+      <h2>Settings Table</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Library Default After <code>setup()</code></th>
+              <th>Source / Register</th>
+              <th>Meaning</th>
+              <th>Why It Matters</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="critical">
+              <td>
+                <span class="param-main"><code>is_communicating</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>isCommunicating()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>True after successful setup with a responding driver</td>
+              <td><code>IOIN.version</code></td>
+              <td>Library check that UART communication with the chip is working.</td>
+              <td>If this is False, the driver is not answering properly and almost nothing else can be trusted.</td>
+            </tr>
+            <tr class="critical">
+              <td>
+                <span class="param-main"><code>is_setup</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>isSetupAndCommunicating()</code>, <code>isCommunicatingButNotSetup()</code>, <code>getSettings()</code>, <code>setup()</code></span>
+              </td>
+              <td>True after successful setup with a responding driver</td>
+              <td>Mainly <code>GCONF.pdn_disable</code>, bit 6</td>
+              <td>Library-level “setup is good” flag. In this library it mostly means <code>GCONF.pdn_disable</code> is set.</td>
+              <td>Useful quick health check, but it is not a full proof that every register is correct.</td>
+            </tr>
+            <tr class="critical">
+              <td>
+                <span class="param-main"><code>pdn_disable</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: <code>setup()</code></span>
+              </td>
+              <td>True</td>
+              <td><code>GCONF.pdn_disable</code>, bit 6</td>
+              <td>Disables PDN behavior and enables proper UART-oriented configuration mode.</td>
+              <td>This is one of the key bits for advanced UART control on the TMC2209.</td>
+            </tr>
+            <tr class="critical">
+              <td>
+                <span class="param-main"><code>mstep_reg_select</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: <code>setup()</code>, <code>setMicrostepsPerStep()</code>, <code>setMicrostepsPerStepPowerOfTwo()</code></span>
+              </td>
+              <td>True</td>
+              <td><code>GCONF.mstep_reg_select</code>, bit 7</td>
+              <td>Selects whether microstep resolution comes from hardware pins <code>MS1/MS2</code> or from the register <code>CHOPCONF.MRES</code>.</td>
+              <td>If this is False, the pins decide microsteps. If this is True, UART/register settings decide microsteps.</td>
+            </tr>
+            <tr class="critical">
+              <td>
+                <span class="param-main"><code>microsteps_per_step</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>getMicrostepsPerStep()</code>, <code>getSettings()</code>, <code>setMicrostepsPerStep()</code>, <code>setMicrostepsPerStepPowerOfTwo()</code></span>
+              </td>
+              <td><code>256</code></td>
+              <td><code>CHOPCONF.MRES</code> or hardware <code>MS1/MS2</code> pins</td>
+              <td>Human-readable microstep resolution. Possible values: <code>1</code>, <code>2</code>, <code>4</code>, <code>8</code>, <code>16</code>, <code>32</code>, <code>64</code>, <code>128</code>, <code>256</code>.</td>
+              <td>This directly affects smoothness, resolution, and required step rate from the controller.</td>
+            </tr>
+            <tr class="critical">
+              <td>
+                <span class="param-main"><code>software_enabled</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>enable()</code>, <code>disable()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>CHOPCONF.toff</code>, bits 0-3</td>
+              <td>Library interpretation of whether the power stage is enabled in software, based on the chopper off-time setting.</td>
+              <td>If this is False, motor outputs are effectively off even if communication still works.</td>
+            </tr>
+
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>enable_spread_cycle</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: <code>enableStealthChop()</code>, <code>disableStealthChop()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.enable_spread_cycle</code>, bit 2</td>
+              <td>Chooses the current-control mode. Possible values: <code>False</code> = StealthChop, <code>True</code> = SpreadCycle.</td>
+              <td>One of the biggest behavior choices: torque/dynamics versus quiet operation.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>stealth_chop_enabled</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>getSettings()</code>, <code>enableStealthChop()</code>, <code>disableStealthChop()</code></span>
+              </td>
+              <td>True</td>
+              <td><code>GCONF.enable_spread_cycle</code>, bit 2</td>
+              <td>Library convenience flag meaning quiet StealthChop mode is active.</td>
+              <td>Useful shorthand for the mode most people care about in practice.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>irun_percent</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setRunCurrent()</code>, <code>setAllCurrentValues()</code>, <code>getSettings()</code></span>
+              </td>
+              <td><code>0%</code></td>
+              <td>Derived from cached <code>IHOLD_IRUN.IRUN</code>, bits 8-12</td>
+              <td>Approximate run-current setting expressed as a percentage.</td>
+              <td>Higher values increase available torque but also increase heat and power use.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>irun_register_value</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setRunCurrent()</code>, <code>setAllCurrentValues()</code>, <code>getSettings()</code></span>
+              </td>
+              <td><code>0</code></td>
+              <td>Cached <code>IHOLD_IRUN.IRUN</code>, bits 8-12</td>
+              <td>Raw run-current register value.</td>
+              <td>Useful when matching exact datasheet behavior or low-level tuning.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>ihold_percent</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setHoldCurrent()</code>, <code>setAllCurrentValues()</code>, <code>getSettings()</code></span>
+              </td>
+              <td><code>0%</code></td>
+              <td>Derived from cached <code>IHOLD_IRUN.IHOLD</code>, bits 0-4</td>
+              <td>Approximate hold-current level expressed as a percentage.</td>
+              <td>Controls standstill holding torque versus heat.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>ihold_register_value</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setHoldCurrent()</code>, <code>setAllCurrentValues()</code>, <code>getSettings()</code></span>
+              </td>
+              <td><code>0</code></td>
+              <td>Cached <code>IHOLD_IRUN.IHOLD</code>, bits 0-4</td>
+              <td>Raw hold-current register value.</td>
+              <td>Useful for exact low-level tuning.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>iholddelay_percent</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setHoldDelay()</code>, <code>setAllCurrentValues()</code>, <code>getSettings()</code></span>
+              </td>
+              <td><code>6%</code></td>
+              <td>Derived from cached <code>IHOLD_IRUN.IHOLDDELAY</code>, bits 16-19</td>
+              <td>Approximate delay or transition amount before current ramps down from run current to hold current.</td>
+              <td>Helps avoid abrupt current drop right after motion stops.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>iholddelay_register_value</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setHoldDelay()</code>, <code>setAllCurrentValues()</code>, <code>getSettings()</code></span>
+              </td>
+              <td><code>1</code></td>
+              <td>Cached <code>IHOLD_IRUN.IHOLDDELAY</code>, bits 16-19</td>
+              <td>Raw hold-delay register value.</td>
+              <td>Useful for precise tuning.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>shaft</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: <code>enableInverseMotorDirection()</code>, <code>disableInverseMotorDirection()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.shaft</code>, bit 3</td>
+              <td>Inverts logical motor direction. Possible values: <code>False</code> = normal direction, <code>True</code> = inverted direction.</td>
+              <td>Lets you reverse direction in software instead of rewiring motor phases.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>inverse_motor_direction_enabled</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>enableInverseMotorDirection()</code>, <code>disableInverseMotorDirection()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.shaft</code>, bit 3</td>
+              <td>Library view of the direction inversion flag.</td>
+              <td>Quick readback of the current direction polarity setting.</td>
+            </tr>
+            <tr class="high">
+              <td>
+                <span class="param-main"><code>standstill_mode</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setStandstillMode()</code>, <code>getSettings()</code></span>
+              </td>
+              <td><code>NORMAL</code></td>
+              <td><code>PWMCONF.freewheel</code>, bits 20-21</td>
+              <td>How the driver behaves when standing still. Possible values: <code>NORMAL</code>, <code>FREEWHEELING</code>, <code>STRONG_BRAKING</code>, <code>BRAKING</code>.</td>
+              <td>Changes whether the motor holds, coasts, or brakes at standstill.</td>
+            </tr>
+
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>i_scale_analog</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: <code>enableAnalogCurrentScaling()</code>, <code>disableAnalogCurrentScaling()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.i_scale_analog</code>, bit 0</td>
+              <td>Uses analog <code>VREF</code>-based current scaling when enabled. Possible values: <code>False</code> = digital current scaling, <code>True</code> = analog VREF scaling.</td>
+              <td>Important if your hardware relies on analog reference voltage for current control.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>analog_current_scaling_enabled</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>enableAnalogCurrentScaling()</code>, <code>disableAnalogCurrentScaling()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.i_scale_analog</code>, bit 0</td>
+              <td>Library view of whether analog current scaling is enabled.</td>
+              <td>Helps confirm whether current is being set mainly by analog or digital means.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>internal_rsense</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: <code>useInternalSenseResistors()</code>, <code>useExternalSenseResistors()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.internal_rsense</code>, bit 1</td>
+              <td>Uses the internal current-sense path instead of external sense resistors. Possible values: <code>False</code> = external sense resistor path, <code>True</code> = internal sense path.</td>
+              <td>Depends on board design and influences current measurement behavior.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>internal_sense_resistors_enabled</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>useInternalSenseResistors()</code>, <code>useExternalSenseResistors()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.internal_rsense</code>, bit 1</td>
+              <td>Library view of the internal sense-resistor setting.</td>
+              <td>Useful confirmation when working with unusual hardware layouts.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>automatic_current_scaling_enabled</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>enableAutomaticCurrentScaling()</code>, <code>disableAutomaticCurrentScaling()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>PWMCONF.pwm_autoscale</code>, bit 18</td>
+              <td>Reflects <code>PWMCONF.pwm_autoscale</code>. Possible values: <code>False</code> = manual amplitude behavior, <code>True</code> = automatic amplitude scaling.</td>
+              <td>Usually helpful for quiet, stable motion without manual tuning.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>automatic_gradient_adaptation_enabled</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>enableAutomaticGradientAdaptation()</code>, <code>disableAutomaticGradientAdaptation()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>False</td>
+              <td><code>PWMCONF.pwm_autograd</code>, bit 19</td>
+              <td>Reflects <code>PWMCONF.pwm_autograd</code>. Possible values: <code>False</code> = fixed gradient behavior, <code>True</code> = automatic gradient adaptation.</td>
+              <td>Improves self-tuning behavior in StealthChop mode.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>pwm_offset</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setPwmOffset()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>36 / <code>0x24</code></td>
+              <td><code>PWMCONF.pwm_offset</code>, bits 0-7</td>
+              <td>Base PWM amplitude term used by StealthChop.</td>
+              <td>Part of fine-grained acoustic and motion tuning.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>pwm_gradient</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>setPwmGradient()</code>, <code>getSettings()</code></span>
+              </td>
+              <td><code>0</code> / <code>0x00</code></td>
+              <td><code>PWMCONF.pwm_grad</code>, bits 8-15</td>
+              <td>Slope term for PWM adaptation in StealthChop.</td>
+              <td>Another advanced tuning parameter for quiet motion quality.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>cool_step_enabled</code></span>
+                <span class="param-meta">Library value</span>
+                <span class="param-meta">Location: <code>Settings</code></span>
+                <span class="param-meta">Functions: <code>enableCoolStep()</code>, <code>disableCoolStep()</code>, <code>getSettings()</code></span>
+              </td>
+              <td>False</td>
+              <td>Library state; configured through <code>COOLCONF</code></td>
+              <td>Whether CoolStep adaptive current control is enabled. Possible values: <code>False</code> = CoolStep off, <code>True</code> = CoolStep enabled.</td>
+              <td>CoolStep reduces current when load is low, cutting heat and power usage.</td>
+            </tr>
+            <tr class="medium">
+              <td>
+                <span class="param-main"><code>multistep_filt</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: <code>setup()</code></span>
+              </td>
+              <td>True</td>
+              <td><code>GCONF.multistep_filt</code>, bit 8</td>
+              <td>Enables a filter on step pulses. Possible values: <code>False</code> = filter off, <code>True</code> = filter on.</td>
+              <td>Can help reject glitches or noise on the step input.</td>
+            </tr>
+
+            <tr class="low">
+              <td>
+                <span class="param-main"><code>index_otpw</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: no dedicated public setter in this library</span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.index_otpw</code>, bit 4</td>
+              <td>Changes the function of the <code>INDEX</code> output related to overtemperature prewarning behavior. Possible values: <code>False</code> = normal INDEX behavior, <code>True</code> = OTPW-related behavior.</td>
+              <td>Mostly relevant only if you actively use the INDEX output pin.</td>
+            </tr>
+            <tr class="low">
+              <td>
+                <span class="param-main"><code>index_step</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: no dedicated public setter in this library</span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.index_step</code>, bit 5</td>
+              <td>Changes the function of the <code>INDEX</code> output to a step-related indication. Possible values: <code>False</code> = normal INDEX behavior, <code>True</code> = STEP-related behavior.</td>
+              <td>Again only relevant when INDEX output is used in hardware.</td>
+            </tr>
+            <tr class="low">
+              <td>
+                <span class="param-main"><code>test_mode</code></span>
+                <span class="param-meta">Chip flag</span>
+                <span class="param-meta">Location: <code>GCONF</code> / GlobalConfig</span>
+                <span class="param-meta">Functions: no public application API; leave unused</span>
+              </td>
+              <td>False</td>
+              <td><code>GCONF.test_mode</code>, bit 9</td>
+              <td>Internal test mode bit. Possible values: <code>False</code> = normal operation, <code>True</code> = factory test behavior.</td>
+              <td>Do not use this in normal applications.</td>
+            </tr>
+            <tr class="low">
+              <td>
+                <span class="param-main"><code>reserved</code></span>
+                <span class="param-meta">Chip bits</span>
+                <span class="param-meta">Location: remaining <code>GCONF</code> bits</span>
+                <span class="param-meta">Functions: none; leave untouched</span>
+              </td>
+              <td>Keep default</td>
+              <td>Reserved bits</td>
+              <td>Reserved bits in the register.</td>
+              <td>Leave untouched unless the datasheet explicitly says otherwise.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Note: the defaults shown here are the library's effective post-<code>setup()</code> values, not the raw silicon reset values.
+        Current-related library values in this library are based on cached settings, not a fresh <code>IHOLD_IRUN</code> readback.
+        A few effective defaults differ from named constants because <code>initialize()</code> first writes packed register defaults and then applies extra changes such as
+        minimizing current, disabling software output, and disabling PWM autoscale/autograd.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Plain-English Glossary</h2>
+      <ul>
+        <li><strong>Chopper:</strong> The internal current-control engine. It rapidly switches the motor power transistors on and off so the coil current follows the requested target.</li>
+        <li><strong>SpreadCycle:</strong> Trinamic’s more torque-oriented and dynamic current-control mode. Usually stronger at speed/load, but not as quiet as StealthChop.</li>
+        <li><strong>StealthChop:</strong> Trinamic’s very quiet PWM-based mode. Great for low noise, usually less aggressive than SpreadCycle under demanding motion.</li>
+        <li><strong>CoolStep:</strong> Automatic load-based current adjustment. The driver reduces current when the motor does not need full torque and raises it again when load increases.</li>
+        <li><strong>Current scaling:</strong> The mechanism that determines how much motor current the driver delivers. This depends on <code>IRUN</code>, <code>IHOLD</code>, VREF behavior, sense resistors, and related options.</li>
+        <li><strong>Autoscale:</strong> In StealthChop, the chip automatically adjusts PWM/current regulation amplitude so you do not have to tune everything manually.</li>
+        <li><strong>Autograd:</strong> Automatic tuning of the PWM gradient term used by StealthChop.</li>
+        <li><strong>Sense resistor / Rsense:</strong> The resistor path used to measure motor current. Some designs use external resistors; the TMC2209 also supports an internal sense option.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Practical Overview</h2>
+      <p>
+        For most real projects, the most important items are <code>is_communicating</code>, <code>is_setup</code>,
+        <code>pdn_disable</code>, <code>mstep_reg_select</code>, <code>microsteps_per_step</code>,
+        <code>enable_spread_cycle</code>, <code>stealth_chop_enabled</code>, and the current-related fields
+        <code>irun</code>/<code>ihold</code>.
+      </p>
+      <p>
+        If UART communication is working but microstep changes do nothing, the first thing to check is
+        <code>mstep_reg_select</code>. If it is <code>False</code>, the hardware pins <code>MS1/MS2</code> still decide
+        the microstep resolution. If it is <code>True</code>, the register <code>CHOPCONF.MRES</code> decides instead.
+      </p>
+      <p>
+        For silent operation, StealthChop-related settings are the main focus. For stronger high-load behavior,
+        SpreadCycle and current-related tuning become more important. CoolStep is useful when you want to reduce heat
+        and power consumption automatically when the motor is lightly loaded.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
