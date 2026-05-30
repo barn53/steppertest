@@ -33,3 +33,4 @@
 
 .pio
 .vscode
+include/ota_secrets.h
